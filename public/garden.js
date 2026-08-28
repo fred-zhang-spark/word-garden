@@ -1,0 +1,467 @@
+// 花园渲染器
+// 一个单词 = 一株只属于它的植物。品种、叶形、花色、果实、高矮、倾斜全部由
+// 单词本身哈希出来，所以 butterfly 那棵永远长成同一个样子，孩子认得出。
+// 生长阶段跟着复习盒子走：破土 → 幼苗 → 抽枝打苞 → 开花 → 结果。
+// 立体感不靠 WebGL：固定右上光源、叶片分亮暗两面、地面软投影、远近分层。
+
+/* ---------- 随机但稳定 ---------- */
+
+function hashOf(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function rngFrom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const pick = (rnd, arr) => arr[Math.floor(rnd() * arr.length)];
+
+/* ---------- 调色板 ---------- */
+// 都往灰里压过，避免塑料玩具感；每组都是 [亮面, 暗面]
+const LEAF = [
+  ["#93C08A", "#5F8F58"],
+  ["#A8CC8E", "#71A05F"],
+  ["#7FB79B", "#528873"],
+  ["#B9CE87", "#87A458"],
+  ["#8CBCA8", "#5B9080"],
+];
+const PETAL = [
+  ["#F6B3C0", "#DE8399"],
+  ["#F8CE84", "#E3A44F"],
+  ["#C3B2E6", "#9382C8"],
+  ["#F7AC8A", "#DE7F5C"],
+  ["#FBF0E2", "#DDC7AC"],
+  ["#A9CDEA", "#7BA5CC"],
+];
+const FRUIT = [
+  ["#E8776C", "#C24B44"],
+  ["#B98BD1", "#8B5CA8"],
+  ["#F0A65C", "#CE7A31"],
+  ["#7FB2E5", "#527FB8"],
+  ["#E2C05A", "#B99532"],
+];
+const CORE = ["#F3D07A", "#E9BE63", "#F6E0A6"];
+
+/* ---------- 品种 ---------- */
+// 六个品种，长相差别要一眼看得出：叶子形状、开花方式、结果方式都不同
+const SPECIES = [
+  { id: "daisy",  leaf: "round", flower: "daisy",   fruit: "berries", petals: 8,  leafPairs: 3, tall: 1.0,  stemW: 2.2 },
+  { id: "tulip",  leaf: "blade", flower: "cup",     fruit: "single",  petals: 3,  leafPairs: 2, tall: 1.05, stemW: 2.6 },
+  { id: "bush",   leaf: "round", flower: "cluster", fruit: "berries", petals: 5,  leafPairs: 4, tall: 0.82, stemW: 2.0, branch: true },
+  { id: "fern",   leaf: "frond", flower: "none",    fruit: "pod",     petals: 0,  leafPairs: 4, tall: 0.92, stemW: 1.9 },
+  { id: "sunny",  leaf: "heart", flower: "disc",    fruit: "single",  petals: 12, leafPairs: 2, tall: 1.18, stemW: 3.0 },
+  { id: "bell",   leaf: "blade", flower: "bell",    fruit: "pod",     petals: 3,  leafPairs: 3, tall: 0.95, stemW: 2.0 },
+];
+
+// 五个阶段的茎高比例：一眼能看出长大了
+const STAGE_HEIGHT = [0, 0.24, 0.46, 0.72, 0.9, 1];
+
+/* ---------- 一株植物的"基因" ---------- */
+
+export function plantGene(word) {
+  const seed = hashOf(word.en.toLowerCase());
+  const rnd = rngFrom(seed);
+  const species = SPECIES[seed % SPECIES.length];
+  return {
+    species,
+    leaf: pick(rnd, LEAF),
+    petal: pick(rnd, PETAL),
+    fruit: pick(rnd, FRUIT),
+    core: pick(rnd, CORE),
+    height: 46 + rnd() * 22,          // 基础高度
+    tilt: (rnd() - 0.5) * 9,          // 倾斜，别站得像军训
+    leafBias: rnd() > 0.5 ? 1 : -1,   // 第一片叶往哪边长
+    petalJitter: rnd() * 0.5 + 0.75,  // 花瓣胖瘦
+    fruitCount: 2 + Math.floor(rnd() * 3),
+    swayDur: (3.6 + rnd() * 2.4).toFixed(2),
+    swayDelay: (rnd() * -4).toFixed(2),
+  };
+}
+
+/* ---------- 画零件 ---------- */
+
+// 叶子：一片深色底 + 一片浅色高光，光从右上来
+function leafPath(shape, len, wide) {
+  switch (shape) {
+    case "blade": // 细长剑叶
+      return `M0 0 C ${len * 0.3} ${-wide * 0.5}, ${len * 0.75} ${-wide * 0.45}, ${len} 0
+              C ${len * 0.75} ${wide * 0.35}, ${len * 0.3} ${wide * 0.4}, 0 0 Z`;
+    case "heart": // 心形叶
+      return `M0 0 C ${len * 0.15} ${-wide}, ${len * 0.85} ${-wide * 0.9}, ${len} ${-wide * 0.15}
+              C ${len * 0.8} ${wide * 0.7}, ${len * 0.25} ${wide * 0.8}, 0 0 Z`;
+    case "frond": { // 羽状复叶：一根中轴 + 一排小叶
+      let d = `M0 0 L ${len} ${-len * 0.12}`;
+      for (let i = 1; i <= 5; i++) {
+        const t = i / 6;
+        const x = len * t;
+        const y = -len * 0.12 * t;
+        const s = wide * (1 - t * 0.55);
+        d += ` M${x} ${y} C ${x + s * 0.5} ${y - s}, ${x + s * 1.3} ${y - s * 0.8}, ${x + s * 1.6} ${y - s * 0.1}
+               C ${x + s * 1.1} ${y + s * 0.3}, ${x + s * 0.4} ${y + s * 0.2}, ${x} ${y} Z`;
+      }
+      return d;
+    }
+    default: // round 圆叶
+      return `M0 0 C ${len * 0.2} ${-wide}, ${len * 0.9} ${-wide * 0.8}, ${len} ${-wide * 0.1}
+              C ${len * 0.85} ${wide * 0.6}, ${len * 0.25} ${wide * 0.75}, 0 0 Z`;
+  }
+}
+
+function leaf(x, y, angle, len, wide, gene, i) {
+  const shape = gene.species.leaf;
+  const d = leafPath(shape, len, wide);
+  const hi = leafPath(shape, len * 0.72, wide * 0.55);
+  return `<g transform="translate(${x} ${y}) rotate(${angle})">
+    <path d="${d}" fill="${gene.leaf[1]}"/>
+    <path d="${hi}" fill="${gene.leaf[0]}" opacity=".85"/>
+    ${shape !== "frond" ? `<path d="M0 0 L ${len * 0.9} ${-wide * 0.08}" stroke="${gene.leaf[1]}" stroke-width=".7" opacity=".5" fill="none"/>` : ""}
+  </g>`;
+}
+
+// 花：五种开法，形状差别要明显
+function flower(x, y, size, gene, open) {
+  const t = gene.species.flower;
+  const [lit, dark] = gene.petal;
+  const s = size * open;
+  if (s < 0.6) return "";
+
+  if (t === "none") return "";
+
+  if (t === "daisy") {
+    const n = gene.species.petals;
+    let petals = "";
+    for (let i = 0; i < n; i++) {
+      const a = (360 / n) * i + 8;
+      petals += `<ellipse cx="${s * 0.62}" cy="0" rx="${s * 0.62}" ry="${s * 0.3 * gene.petalJitter}"
+        fill="${i % 2 ? dark : lit}" transform="rotate(${a})"/>`;
+    }
+    return `<g transform="translate(${x} ${y})">${petals}
+      <circle r="${s * 0.34}" fill="${gene.core}"/>
+      <circle cx="${-s * 0.1}" cy="${-s * 0.1}" r="${s * 0.13}" fill="#fff" opacity=".55"/></g>`;
+  }
+
+  if (t === "cup") { // 郁金香：三片包成杯子
+    return `<g transform="translate(${x} ${y})">
+      <path d="M${-s * 0.5} 0 C ${-s * 0.55} ${-s * 0.9}, ${-s * 0.2} ${-s * 1.15}, 0 ${-s * 1.15}
+               C ${s * 0.2} ${-s * 1.15}, ${s * 0.55} ${-s * 0.9}, ${s * 0.5} 0 Z" fill="${dark}"/>
+      <path d="M${-s * 0.32} ${-s * 0.05} C ${-s * 0.36} ${-s * 0.8}, ${-s * 0.1} ${-s * 1.05}, ${s * 0.05} ${-s * 1.05}
+               C ${s * 0.2} ${-s * 1.0}, ${s * 0.3} ${-s * 0.7}, ${s * 0.26} ${-s * 0.05} Z" fill="${lit}"/>
+      <path d="M${-s * 0.5} 0 C ${-s * 0.2} ${s * 0.22}, ${s * 0.2} ${s * 0.22}, ${s * 0.5} 0" fill="${dark}" opacity=".7"/>
+    </g>`;
+  }
+
+  if (t === "bell") { // 风铃草：垂下来的小钟
+    let bells = "";
+    for (let i = 0; i < 3; i++) {
+      const bx = (i - 1) * s * 0.72;
+      const by = Math.abs(i - 1) * s * 0.3;
+      bells += `<g transform="translate(${bx} ${by})">
+        <path d="M${-s * 0.34} 0 C ${-s * 0.38} ${s * 0.62}, ${-s * 0.2} ${s * 0.82}, 0 ${s * 0.82}
+                 C ${s * 0.2} ${s * 0.82}, ${s * 0.38} ${s * 0.62}, ${s * 0.34} 0 Z" fill="${dark}"/>
+        <path d="M${-s * 0.2} ${s * 0.05} C ${-s * 0.22} ${s * 0.5}, ${-s * 0.05} ${s * 0.66}, ${s * 0.06} ${s * 0.66}" 
+              stroke="${lit}" stroke-width="${s * 0.2}" stroke-linecap="round" fill="none"/>
+      </g>`;
+    }
+    return `<g transform="translate(${x} ${y})">${bells}</g>`;
+  }
+
+  if (t === "cluster") { // 小花簇
+    let dots = "";
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI * 2 * i) / 6;
+      dots += `<circle cx="${Math.cos(a) * s * 0.45}" cy="${Math.sin(a) * s * 0.38}" r="${s * 0.28}" fill="${i % 2 ? lit : dark}"/>`;
+    }
+    return `<g transform="translate(${x} ${y})">${dots}<circle r="${s * 0.24}" fill="${gene.core}"/></g>`;
+  }
+
+  // disc 向日葵盘
+  const n = gene.species.petals;
+  let petals = "";
+  for (let i = 0; i < n; i++) {
+    petals += `<ellipse cx="${s * 0.72}" cy="0" rx="${s * 0.5}" ry="${s * 0.22}"
+      fill="${i % 2 ? dark : lit}" transform="rotate(${(360 / n) * i})"/>`;
+  }
+  return `<g transform="translate(${x} ${y})">${petals}
+    <circle r="${s * 0.46}" fill="${dark}" opacity=".55"/>
+    <circle r="${s * 0.4}" fill="${gene.core}"/>
+    <circle cx="${-s * 0.12}" cy="${-s * 0.12}" r="${s * 0.15}" fill="#fff" opacity=".45"/></g>`;
+}
+
+// 果实：球体感靠一个高光点 + 底部一圈暗环
+function fruit(x, y, size, gene) {
+  const [lit, dark] = gene.fruit;
+  const t = gene.species.fruit;
+
+  if (t === "berries") {
+    let out = "";
+    for (let i = 0; i < gene.fruitCount; i++) {
+      const a = (i / Math.max(gene.fruitCount - 1, 1) - 0.5) * 1.5;
+      const bx = a * size * 1.7;
+      const by = Math.abs(a) * size * 0.5 + size * 0.2;
+      out += `<g transform="translate(${bx} ${by})">
+        <circle r="${size * 0.52}" fill="${dark}"/>
+        <circle cy="${-size * 0.06}" r="${size * 0.44}" fill="${lit}"/>
+        <circle cx="${-size * 0.15}" cy="${-size * 0.2}" r="${size * 0.15}" fill="#fff" opacity=".6"/>
+      </g>`;
+    }
+    return `<g transform="translate(${x} ${y})">${out}</g>`;
+  }
+
+  if (t === "pod") { // 豆荚
+    return `<g transform="translate(${x} ${y}) rotate(14)">
+      <path d="M0 0 C ${size * 0.9} ${-size * 0.7}, ${size * 2.2} ${-size * 0.5}, ${size * 2.6} ${size * 0.15}
+               C ${size * 2.1} ${size * 0.8}, ${size * 0.7} ${size * 0.7}, 0 0 Z" fill="${dark}"/>
+      <path d="M${size * 0.3} ${size * 0.02} C ${size * 1.0} ${-size * 0.42}, ${size * 1.8} ${-size * 0.3}, ${size * 2.2} ${size * 0.08}"
+            stroke="${lit}" stroke-width="${size * 0.34}" stroke-linecap="round" fill="none"/>
+      ${[0.7, 1.3, 1.9].map((f) => `<circle cx="${size * f}" cy="${size * 0.02}" r="${size * 0.16}" fill="#fff" opacity=".35"/>`).join("")}
+    </g>`;
+  }
+
+  // single 单果
+  return `<g transform="translate(${x} ${y})">
+    <ellipse cy="${size * 0.9}" rx="${size * 0.85}" ry="${size * 0.2}" fill="${dark}" opacity=".25"/>
+    <circle r="${size}" fill="${dark}"/>
+    <circle cy="${-size * 0.08}" r="${size * 0.86}" fill="${lit}"/>
+    <ellipse cx="${-size * 0.28}" cy="${-size * 0.36}" rx="${size * 0.3}" ry="${size * 0.22}" fill="#fff" opacity=".55" transform="rotate(-25 ${-size * 0.28} ${-size * 0.36})"/>
+    <path d="M0 ${-size * 0.92} q ${size * 0.5} ${-size * 0.45} ${size * 0.75} ${-size * 0.1}" stroke="#7FA26E" stroke-width="${size * 0.16}" fill="none" stroke-linecap="round"/>
+  </g>`;
+}
+
+/* ---------- 一整株 ---------- */
+
+export function plantSVG(word, { scale = 1, showBase = true } = {}) {
+  const gene = plantGene(word);
+  const stage = Math.max(1, Math.min(5, word.box || 1));
+  const grow = STAGE_HEIGHT[stage];
+  const sp = gene.species;
+  const H = gene.height * sp.tall * grow;
+  const w = sp.stemW;
+
+  // 茎：略微弯，不要笔直
+  const bend = gene.tilt * 0.5;
+  const stem = `M0 0 C ${bend * 0.3} ${-H * 0.4}, ${bend * 0.8} ${-H * 0.7}, ${bend} ${-H}`;
+
+  // 第一阶段：破土的两片子叶，还没有茎
+  if (stage === 1) {
+    const s = 7 * scale;
+    return `<g class="plant-body">
+      ${showBase ? soilMound(9 * scale) : ""}
+      <path d="M0 0 L 0 ${-s * 1.2}" stroke="${gene.leaf[1]}" stroke-width="${1.6 * scale}" stroke-linecap="round"/>
+      ${leaf(0, -s * 1.1, -142, s * 1.5, s * 0.9, gene, 0)}
+      ${leaf(0, -s * 1.1, -38, s * 1.5, s * 0.9, gene, 1)}
+    </g>`;
+  }
+
+  let parts = showBase ? soilMound(11 * scale) : "";
+  parts += `<path d="${stem}" stroke="url(#wg-stem)" stroke-width="${w}" stroke-linecap="round" fill="none"/>`;
+
+  // 叶子沿着茎交替长，越往上越小
+  const pairs = Math.min(sp.leafPairs, stage + 1);
+  for (let i = 0; i < pairs; i++) {
+    const t = 0.22 + (i / Math.max(pairs, 1)) * 0.62;
+    const y = -H * t;
+    const x = bend * t;
+    const side = i % 2 === 0 ? gene.leafBias : -gene.leafBias;
+    const size = (14 - i * 1.6) * (0.7 + grow * 0.4);
+    const ang = side > 0 ? -28 - i * 5 : -152 + i * 5;
+    parts += leaf(x, y, ang, size, size * 0.52, gene, i);
+  }
+
+  // 分枝品种在半高处岔一根
+  if (sp.branch && stage >= 3) {
+    const by = -H * 0.5;
+    parts += `<path d="M${bend * 0.5} ${by} q ${10 * gene.leafBias} ${-6} ${15 * gene.leafBias} ${-16}"
+      stroke="url(#wg-stem)" stroke-width="${w * 0.7}" fill="none" stroke-linecap="round"/>`;
+    parts += leaf(bend * 0.5 + 15 * gene.leafBias, by - 16, gene.leafBias > 0 ? -50 : -130, 11, 6, gene, 9);
+  }
+
+  // 3：打苞　4：开花　5：花谢结果
+  if (stage === 3) {
+    const [lit, dark] = gene.petal;
+    parts += `<g transform="translate(${bend} ${-H})">
+      <path d="M${-3.2} 2 C ${-4} ${-6}, ${-1.6} ${-9.5}, 0 ${-9.5}
+               C ${1.6} ${-9.5}, ${4} ${-6}, ${3.2} 2 Z" fill="${dark}"/>
+      <path d="M${-1.6} 1 C ${-2.2} ${-5}, ${-0.6} ${-8}, ${0.4} ${-8}" stroke="${lit}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M${-3.6} 2 q 3.6 3 7.2 0" fill="${gene.leaf[1]}"/>
+    </g>`;
+  } else if (stage === 4) {
+    parts += flower(bend, -H - 2, 11, gene, 1);
+  } else if (stage === 5) {
+    // 结果了还留一朵小花，看得出是从花变来的
+    parts += flower(bend - 9, -H + 5, 6, gene, 0.85);
+    parts += fruit(bend + 2, -H - 1, sp.fruit === "single" ? 7 : 4.6, gene);
+    parts += `<g class="sparkle" transform="translate(${bend + 12} ${-H - 10})">
+      <path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#FBE6A8"/>
+    </g>`;
+  }
+
+  return `<g class="plant-body">${parts}</g>`;
+}
+
+// 土堆：底下垫一层，植物才像"长在地里"而不是浮着
+function soilMound(r) {
+  return `<ellipse cx="0" cy="1" rx="${r}" ry="${r * 0.32}" fill="url(#wg-soil)"/>`;
+}
+
+/* ---------- 整个花园 ---------- */
+
+const VIEW_W = 360;
+const VIEW_H = 168;
+const ROWS = [
+  { y: 108, scale: 0.72, fade: 0.78 }, // 远
+  { y: 132, scale: 0.9, fade: 0.92 },  // 中
+  { y: 158, scale: 1.08, fade: 1 },    // 近
+];
+const PER_ROW = 7;
+
+// 渐变一次性定义在页面上，任何单独画一株植物的地方（词卡、图鉴）都能引用同一套。
+// 不这么做的话，脱离花园的植物会因为找不到 url(#wg-stem) 而变透明。
+export const GARDEN_DEFS = `<defs>
+      <linearGradient id="wg-sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F2F7F4"/><stop offset="1" stop-color="#EAF2E7"/>
+      </linearGradient>
+      <linearGradient id="wg-stem" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#5D8B55"/><stop offset=".55" stop-color="#7DAB6F"/><stop offset="1" stop-color="#96BF85"/>
+      </linearGradient>
+      <radialGradient id="wg-soil" cx=".4" cy=".3">
+        <stop offset="0" stop-color="#C7B091"/><stop offset="1" stop-color="#A8926F"/>
+      </radialGradient>
+      <linearGradient id="wg-hill-far" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#DCEBD9"/><stop offset="1" stop-color="#CBE0C6"/>
+      </linearGradient>
+      <linearGradient id="wg-hill-mid" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#CCE2C6"/><stop offset="1" stop-color="#B6D4B0"/>
+      </linearGradient>
+      <linearGradient id="wg-hill-near" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#B9D8B2"/><stop offset="1" stop-color="#9FC79A"/>
+      </linearGradient>
+      <radialGradient id="wg-sun" cx=".5" cy=".5">
+        <stop offset="0" stop-color="#FFF6DF" stop-opacity=".9"/><stop offset="1" stop-color="#FFF6DF" stop-opacity="0"/>
+      </radialGradient>
+</defs>`;
+
+export function mountDefs(doc = document) {
+  if (doc.getElementById("wg-defs")) return;
+  const holder = doc.createElement("div");
+  holder.id = "wg-defs";
+  holder.setAttribute("aria-hidden", "true");
+  holder.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+  holder.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg">${GARDEN_DEFS}</svg>`;
+  doc.body.appendChild(holder);
+}
+
+export function gardenSVG(words) {
+  const shown = words.slice(-ROWS.length * PER_ROW);
+  const rest = words.length - shown.length;
+
+  // 新的种在前排（看得最清楚），老的往后排退；植物少时也铺开，别挤成一堆
+  const rows = [[], [], []];
+  const rowCount = shown.length <= 4 ? 1 : shown.length <= 10 ? 2 : 3;
+  const per = Math.ceil(shown.length / rowCount);
+  shown.forEach((w, i) => {
+    const fromEnd = shown.length - 1 - i;
+    const depth = Math.min(rowCount - 1, Math.floor(fromEnd / per));
+    rows[2 - depth].push(w);
+  });
+
+  let body = "";
+  rows.forEach((rowWords, r) => {
+    const { y, scale, fade } = ROWS[r];
+    const n = rowWords.length;
+    if (!n) return;
+    const step = VIEW_W / (n + 1);
+    // 前后排错开半格，不然三排会排成整齐的四列，像军训不像花园
+    const offset = r % 2 === 0 ? step * 0.42 : -step * 0.18;
+    rowWords.forEach((word, i) => {
+      const gene = plantGene(word);
+      const jitter = (hashOf(word.id || word.en) % 100) / 100 - 0.5;
+      const x = Math.max(16, Math.min(VIEW_W - 16, step * (i + 1) + offset + jitter * step * 0.28));
+      body += `<g class="plant" data-plant="${word.id || ""}" transform="translate(${x.toFixed(1)} ${y}) scale(${scale})" opacity="${fade}">
+        <ellipse class="cast" cx="2" cy="2" rx="14" ry="4" fill="#6E9270" opacity=".18"/>
+        <g class="sway" style="--d:${gene.swayDur}s;--delay:${gene.swayDelay}s;transform:rotate(${gene.tilt * 0.25}deg)">
+          ${plantSVG(word, { scale })}
+        </g>
+      </g>`;
+    });
+  });
+
+  return `<svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" role="img" aria-label="单词花园，一共 ${words.length} 株植物">
+
+    <rect width="${VIEW_W}" height="${VIEW_H}" fill="url(#wg-sky)"/>
+    <circle cx="314" cy="20" r="52" fill="url(#wg-sun)"/>
+    <circle cx="314" cy="20" r="14" fill="#FCEBC2"/>
+    <circle cx="310" cy="16" r="6" fill="#FFF8E6" opacity=".8"/>
+
+    <path d="M0 92 C 70 74, 120 98, 190 86 S 300 70, 360 82 V ${VIEW_H} H0 Z" fill="url(#wg-hill-far)"/>
+    ${distantBushes()}
+    <path d="M0 116 C 60 102, 130 124, 200 112 S 310 100, 360 112 V ${VIEW_H} H0 Z" fill="url(#wg-hill-mid)"/>
+    <path d="M0 142 C 80 128, 140 148, 230 136 S 320 130, 360 140 V ${VIEW_H} H0 Z" fill="url(#wg-hill-near)"/>
+    ${grassTufts()}
+    ${body}
+    ${motes()}
+    ${rest > 0 ? `<text x="${VIEW_W - 8}" y="16" text-anchor="end" font-size="9" fill="#8CA48F" font-weight="700">山那边还有 ${rest} 棵</text>` : ""}
+  </svg>`;
+}
+
+// 地面上撒点草，别让土地太空
+function grassTufts() {
+  const rnd = rngFrom(20260828);
+  let out = "";
+  for (let i = 0; i < 34; i++) {
+    const x = rnd() * VIEW_W;
+    const y = 96 + rnd() * 68;
+    const h = 3 + rnd() * 4;
+    const c = y > 138 ? "#8FBA88" : "#A9CBA2";
+    out += `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l ${(rnd() - 0.5) * 2} ${-h}" stroke="${c}" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`;
+  }
+  return out;
+}
+
+// 远山上的灌木：给场景一点纵深，不抢主角
+function distantBushes() {
+  const rnd = rngFrom(77123);
+  let out = "";
+  for (let i = 0; i < 5; i++) {
+    const x = 24 + i * 74 + (rnd() - 0.5) * 26;
+    const y = 84 - rnd() * 6;
+    const r = 7 + rnd() * 5;
+    out += `<g opacity=".55">
+      <ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${r.toFixed(1)}" ry="${(r * 0.78).toFixed(1)}" fill="#AFCFA8"/>
+      <ellipse cx="${(x + r * 0.6).toFixed(1)}" cy="${(y + 2).toFixed(1)}" rx="${(r * 0.7).toFixed(1)}" ry="${(r * 0.6).toFixed(1)}" fill="#C0DAB8"/>
+    </g>`;
+  }
+  return out;
+}
+
+// 空气里的浮尘/花粉，慢慢飘，让画面活起来
+function motes() {
+  const rnd = rngFrom(4242);
+  let out = "";
+  for (let i = 0; i < 9; i++) {
+    const x = rnd() * VIEW_W;
+    const y = 40 + rnd() * 100;
+    const r = 0.9 + rnd() * 1.4;
+    out += `<circle class="mote" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#FFF6DC"
+      style="--d:${(7 + rnd() * 7).toFixed(1)}s;--delay:${(rnd() * -9).toFixed(1)}s" opacity=".75"/>`;
+  }
+  return out;
+}
+
+/* ---------- 说明文字 ---------- */
+
+export const STAGE_NAMES = ["", "刚发芽", "小苗", "打苞了", "开花了", "结果了"];
+
+export function stageLabel(word) {
+  return STAGE_NAMES[Math.max(1, Math.min(5, word.box || 1))];
+}

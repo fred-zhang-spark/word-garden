@@ -2,6 +2,8 @@
 // 设计原则（对 9-12 岁孩子）：任何操作 3 秒内要有看得见的回报；
 // 答错不惩罚；一次浇水只做 6 个词，宁可让孩子觉得没玩够。
 
+import { gardenSVG, stageLabel, plantSVG, mountDefs } from "/garden.js";
+
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -151,32 +153,48 @@ function renderGarden() {
   $("#garden-empty").hidden = words.length > 0;
 }
 
-// 每个词一棵苗；记牢了（box>=4）的开花。最多画 14 棵，再多就长不下了。
 function drawHill(words) {
-  const shown = words.slice(-14);
-  const W = 360, H = 86;
-  const step = shown.length ? W / (shown.length + 1) : W;
-  const plants = shown
-    .map((w, i) => {
-      const x = Math.round(step * (i + 1));
-      const h = 16 + ((w.box || 1) * 4) + ((i * 7) % 9);
-      const top = 66 - h;
-      const bloom = (w.box || 1) >= 4;
-      const hue = ["#8CBF87", "#A5D19F", "#7FB37B"][i % 3];
-      return `<g>
-        <path d="M${x} 66v-${h}" stroke="#6E9B6C" stroke-width="2" stroke-linecap="round"/>
-        <ellipse cx="${x - 6}" cy="${top + 6}" rx="7" ry="4.6" fill="${hue}"/>
-        <ellipse cx="${x + 6}" cy="${top + 9}" rx="6" ry="4" fill="${hue}"/>
-        ${bloom ? `<circle cx="${x}" cy="${top - 2}" r="5.2" fill="#F0B07E"/><circle cx="${x}" cy="${top - 2}" r="1.9" fill="#FFF3E4"/>` : ""}
-      </g>`;
-    })
-    .join("");
+  const hill = $("#hill");
+  hill.innerHTML = gardenSVG(words);
+  // 刚种下的那株冒出来一下，让孩子看见"我刚才那个词在这儿"
+  if (justPlanted) {
+    const el = hill.querySelector(`[data-plant="${justPlanted}"]`);
+    if (el) el.classList.add("pop");
+    justPlanted = null;
+  }
+}
 
-  $("#hill").innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0 60c48-16 92 6 138-4s84-28 130-18 62 22 92 18v30H0z" fill="#E4F0E3"/>
-    <path d="M0 68c54-10 96 4 150-2s96-16 150-8 60 10 60 10v18H0z" fill="#CFE6CE"/>
-    ${plants}
-  </svg>`;
+let justPlanted = null;
+
+// 点一株植物，从底下推出它是哪个词、长到哪一步了
+function openPlant(id) {
+  const w = state.words.find((x) => x.id === id);
+  if (!w) return;
+  const sheet = $("#sheet");
+  const days = Math.max(0, Math.ceil((w.dueAt - Date.now()) / 86400000));
+  sheet.innerHTML = `<div class="sheet-inner">
+      <div class="sheet-plant"><svg viewBox="-40 -84 80 96">${plantSVG(w, { showBase: false })}</svg></div>
+      <div class="sheet-txt">
+        <div class="word-en">${esc(w.en)}</div>
+        <div class="word-meta">${esc(w.phonetic || "")} ${esc(w.pos || "")}</div>
+        <div class="word-zh">${esc(w.zh)}</div>
+        <div class="sheet-stage">${esc(stageLabel(w))} · ${
+          days <= 0 ? "今天可以浇水" : `${days} 天后再浇水`
+        }</div>
+      </div>
+      <button class="speak" type="button" data-speak="${esc(w.en)}" aria-label="听发音">${speakerSVG}</button>
+    </div>
+    ${w.example_en ? `<div class="word-ex"><b>${esc(w.example_en)}</b><span>${esc(w.example_zh || "")}</span></div>` : ""}
+    ${w.photo ? `<img class="sheet-photo" src="${esc(w.photo)}" alt="你拍的照片">` : ""}`;
+  sheet.hidden = false;
+  requestAnimationFrame(() => sheet.classList.add("up"));
+  speak(w.en);
+}
+
+function closeSheet() {
+  const sheet = $("#sheet");
+  sheet.classList.remove("up");
+  setTimeout(() => (sheet.hidden = true), 260);
 }
 
 /* ---------------- 查词 ---------------- */
@@ -198,7 +216,7 @@ function wordCardHTML(word, { action = "plant", photo = null } = {}) {
       <button class="speak" type="button" data-speak="${esc(w.en)}" aria-label="听发音">${speakerSVG}</button>
     </div>
     ${w.example_en ? `<div class="word-ex"><b>${esc(w.example_en)}</b><span>${esc(w.example_zh || "")}</span></div>` : ""}
-    ${action === "plant" ? `<div class="row"><button class="btn btn-plant" type="button" data-plant>种进花园 🌱</button></div>` : ""}
+    ${action === "plant" ? `<div class="row"><button class="btn btn-plant" type="button" data-plant-one>种进花园 🌱</button></div>` : ""}
   </div>`;
 }
 
@@ -312,7 +330,7 @@ async function collect(items, source, photo) {
     state.words = data.words;
     const n = data.added.length;
     const dup = data.skipped.length;
-    if (n) speak(data.added[0].en);
+    if (n) { speak(data.added[0].en); justPlanted = data.added[0].id; }
     toast(
       n && dup ? `种下 ${n} 个，${dup} 个早就有啦`
       : n ? (n === 1 ? `「${data.added[0].en}」种进花园啦 🌱` : `种下 ${n} 个新词 🌱`)
@@ -562,7 +580,11 @@ function exportCSV() {
 /* ---------------- 事件总线 ---------------- */
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-go],[data-camera],[data-plant],[data-plant-picks],[data-pick],[data-answer],[data-speak],[data-again],[data-export],[data-word]");
+  const plant = e.target.closest("[data-plant]");
+  if (plant && plant.dataset.plant) return openPlant(plant.dataset.plant);
+  if (!e.target.closest("#sheet")) closeSheet();
+
+  const t = e.target.closest("[data-go],[data-camera],[data-plant-one],[data-plant-picks],[data-pick],[data-answer],[data-speak],[data-again],[data-export],[data-word]");
   if (!t) return;
 
   if (t.dataset.go) return go(t.dataset.go);
@@ -578,7 +600,7 @@ document.addEventListener("click", (e) => {
 
   if (t.hasAttribute("data-speak")) return speak(t.dataset.speak);
 
-  if (t.hasAttribute("data-plant")) {
+  if (t.hasAttribute("data-plant-one")) {
     if (!pendingWord) return;
     const word = pendingWord;
     pendingWord = null;
@@ -616,6 +638,7 @@ document.addEventListener("click", (e) => {
 
 /* ---------------- 启动 ---------------- */
 
+mountDefs();
 await loadState();
 go("garden");
 
