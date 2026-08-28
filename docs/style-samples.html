@@ -1,0 +1,588 @@
+<title>单词花园风格小样</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:wght@400;600;700&family=Newsreader:opsz,wght@6..72,300..600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* ============ 页面外壳（会跟随系统深浅色） ============ */
+:root{
+  --paper:#F6F6F3;
+  --ink:#191C1A;
+  --muted:#6C726E;
+  --line:#E3E4DE;
+  --card:#FFFFFF;
+  --accent:#2F6B4F;
+  --shadow:0 18px 40px -24px rgba(24,32,27,.45);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#121412;
+    --ink:#ECEFE9;
+    --muted:#98A09A;
+    --line:#272B27;
+    --card:#191C19;
+    --accent:#84C29D;
+    --shadow:0 18px 44px -22px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121412;
+  --ink:#ECEFE9;
+  --muted:#98A09A;
+  --line:#272B27;
+  --card:#191C19;
+  --accent:#84C29D;
+  --shadow:0 18px 44px -22px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"IBM Plex Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.6;
+}
+.wrap{max-width:1060px;margin:0 auto;padding:48px 24px 72px;}
+
+.brief{display:flex;flex-direction:column;gap:14px;max-width:62ch;}
+.eyebrow{
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.brief h1{
+  margin:0;font-size:clamp(26px,4vw,36px);line-height:1.25;
+  font-weight:600;text-wrap:balance;letter-spacing:-.01em;
+}
+.brief p{margin:0;color:var(--muted);font-size:15px;}
+
+.rule{height:1px;background:var(--line);border:0;margin:36px 0 32px;}
+
+.compare{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:44px;align-items:start;
+}
+@media (max-width:820px){.compare{grid-template-columns:1fr;gap:56px;}}
+
+.col{display:flex;flex-direction:column;gap:18px;align-items:center;}
+.col-head{width:100%;max-width:390px;display:flex;flex-direction:column;gap:6px;}
+.col-head .tag{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.col-head .tag b{
+  width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+  color:#fff;font-size:11px;letter-spacing:0;
+}
+.col-a .tag b{background:#6FA3D6;}
+.col-b .tag b{background:#2F6B4F;}
+.col-head h2{margin:0;font-size:21px;font-weight:600;letter-spacing:-.01em;}
+.col-head p{margin:0;color:var(--muted);font-size:14px;}
+
+.notes{
+  width:100%;max-width:390px;margin:0;padding:0;list-style:none;
+  display:flex;flex-direction:column;gap:9px;
+  font-size:13.5px;color:var(--muted);
+}
+.notes li{display:flex;gap:9px;line-height:1.5;}
+.notes li::before{content:"";flex:0 0 5px;height:5px;border-radius:50%;background:var(--accent);margin-top:9px;}
+
+/* ============ 手机外框 ============ */
+.phone{
+  width:min(390px,100%);
+  border-radius:38px;
+  padding:9px;
+  background:#2A2E2B;
+  box-shadow:var(--shadow);
+  flex:0 0 auto;
+}
+.screen{
+  border-radius:30px;overflow:hidden;position:relative;
+  height:788px;display:flex;flex-direction:column;
+  /* 屏幕内部固定为浅色：这是设备截图，不跟随主题 */
+}
+.bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 22px 2px;font-size:12px;font-weight:600;letter-spacing:.02em;
+  flex:0 0 auto;
+}
+.bar svg{display:block;}
+
+/* ============ A · 云朵贴纸风 ============ */
+.screen.a{
+  background:linear-gradient(180deg,#DCEAF6 0%,#E9F0F1 42%,#F7F2E8 100%);
+  color:#2C3A42;
+  font-family:"Nunito","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+}
+.a-cloud{position:absolute;background:#fff;border-radius:100px;opacity:.55;pointer-events:none;}
+.a-cloud::before,.a-cloud::after{content:"";position:absolute;background:#fff;border-radius:50%;}
+.a-c1{width:120px;height:34px;top:64px;left:-26px;}
+.a-c1::before{width:44px;height:44px;top:-19px;left:22px;}
+.a-c1::after{width:30px;height:30px;top:-12px;left:62px;}
+.a-c2{width:88px;height:26px;top:132px;right:-18px;opacity:.42;}
+.a-c2::before{width:34px;height:34px;top:-15px;left:16px;}
+.a-c2::after{width:22px;height:22px;top:-9px;left:46px;}
+
+.a-body{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;padding:6px 20px 0;overflow:hidden;}
+
+.a-top{display:flex;justify-content:space-between;align-items:flex-start;padding-top:10px;}
+.a-hello{font-size:13.5px;color:#6C8393;font-weight:600;}
+.a-name{
+  font-family:"Baloo 2","PingFang SC",system-ui,sans-serif;
+  font-size:26px;font-weight:700;line-height:1.25;color:#2C3A42;margin-top:1px;
+}
+.a-name span{color:#E08A55;}
+.a-avatar{
+  width:44px;height:44px;border-radius:16px;background:#fff;
+  display:grid;place-items:center;font-size:22px;
+  box-shadow:0 6px 0 -1px #CFDDE6;transform:rotate(4deg);
+}
+
+.a-garden{
+  margin-top:16px;background:#fff;border-radius:26px;padding:14px 16px 0;
+  box-shadow:0 10px 0 -4px rgba(140,170,190,.28);
+  overflow:hidden;
+}
+.a-stats{display:flex;gap:8px;}
+.a-pill{
+  flex:1;border-radius:14px;padding:8px 10px;text-align:center;
+  font-size:11.5px;font-weight:700;color:#5A7280;
+}
+.a-pill b{display:block;font-family:"Baloo 2",system-ui,sans-serif;font-size:19px;line-height:1.2;}
+.a-p1{background:#E7F1FA;color:#4E7EA8;}
+.a-p2{background:#EAF3E9;color:#5C8659;}
+.a-p3{background:#FBEEE4;color:#B9764A;}
+.a-hill{display:block;width:calc(100% + 32px);margin:8px -16px -1px;}
+
+.a-sec{
+  font-family:"Baloo 2","PingFang SC",system-ui,sans-serif;
+  font-size:15px;font-weight:600;color:#54697A;margin:20px 0 10px;
+  display:flex;align-items:center;gap:7px;
+}
+.a-sec::after{content:"";flex:1;height:2px;border-radius:2px;background:#DCE6ED;}
+
+.a-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.a-act{
+  background:#fff;border-radius:20px;padding:13px 8px 11px;text-align:center;
+  font-weight:700;font-size:12.5px;color:#3E5563;
+  box-shadow:0 6px 0 -1px rgba(140,170,190,.3);
+}
+.a-act:nth-child(1){transform:rotate(-2deg);}
+.a-act:nth-child(3){transform:rotate(2deg);}
+.a-ico{
+  width:40px;height:40px;border-radius:14px;margin:0 auto 7px;
+  display:grid;place-items:center;
+}
+.a-i1{background:#DCEAF7;}
+.a-i2{background:#E5F0E2;}
+.a-i3{background:#FAE9DC;}
+
+.a-quiz{
+  margin-top:18px;background:#FFF6EC;border-radius:24px;padding:15px 16px;
+  display:flex;align-items:center;gap:13px;
+  box-shadow:0 8px 0 -3px rgba(224,138,85,.22);
+}
+.a-quiz-txt{flex:1;}
+.a-quiz-txt h3{
+  margin:0;font-family:"Baloo 2",system-ui,sans-serif;font-size:17px;font-weight:700;color:#A85F2E;
+}
+.a-quiz-txt p{margin:2px 0 0;font-size:12.5px;color:#B48260;font-weight:600;line-height:1.45;}
+.a-go{
+  background:#E88F4F;color:#fff;border-radius:16px;padding:10px 14px;
+  font-family:"Baloo 2",system-ui,sans-serif;font-weight:700;font-size:14px;
+  box-shadow:0 4px 0 0 #C9702F;white-space:nowrap;
+}
+
+.a-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.a-chip{
+  background:#fff;border-radius:15px;padding:7px 12px 7px 8px;
+  display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#3E5563;
+  box-shadow:0 4px 0 -1px rgba(140,170,190,.3);
+}
+.a-chip em{font-style:normal;font-size:16px;}
+.a-chip i{font-style:normal;font-weight:600;color:#8CA2AE;font-size:11.5px;}
+.a-chip:nth-child(2){transform:rotate(-1.5deg);}
+.a-chip:nth-child(4){transform:rotate(1.5deg);}
+
+.a-nav{
+  margin:auto 0 0;position:relative;z-index:2;
+  background:#fff;border-radius:24px 24px 0 0;
+  padding:11px 14px 22px;display:flex;justify-content:space-around;
+  box-shadow:0 -6px 24px -12px rgba(70,100,120,.45);
+}
+.a-nav div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:#9DB0BC;}
+.a-nav div.on{color:#4E88BE;}
+
+/* ============ B · 干净留白风 ============ */
+.screen.b{
+  background:#FCFCFA;
+  color:#171C19;
+  font-family:"IBM Plex Sans","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+}
+.b-body{flex:1;display:flex;flex-direction:column;padding:8px 24px 0;overflow:hidden;}
+
+.b-top{display:flex;justify-content:space-between;align-items:center;padding-top:12px;}
+.b-mark{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7C857F;font-weight:600;}
+.b-user{
+  width:30px;height:30px;border-radius:50%;background:#EDEFEA;
+  display:grid;place-items:center;font-family:"Newsreader",serif;font-size:14px;color:#3D4A41;
+}
+
+.b-lede{
+  font-family:"Newsreader","Songti SC",serif;
+  font-size:29px;line-height:1.35;font-weight:400;letter-spacing:-.005em;
+  margin:26px 0 0;text-wrap:balance;color:#141A16;
+}
+.b-lede em{font-style:italic;color:#1F5C45;}
+.b-sub{margin:9px 0 0;font-size:13px;color:#7C857F;}
+
+.b-metrics{
+  display:flex;margin-top:22px;border-top:1px solid #E6E7E1;border-bottom:1px solid #E6E7E1;
+}
+.b-metric{flex:1;padding:13px 0;}
+.b-metric + .b-metric{border-left:1px solid #E6E7E1;padding-left:14px;}
+.b-metric b{
+  display:block;font-family:"Newsreader",serif;font-size:23px;font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2;color:#141A16;
+}
+.b-metric span{font-size:11px;color:#7C857F;letter-spacing:.02em;}
+
+.b-search{
+  margin-top:22px;border:1px solid #DCDED7;border-radius:14px;
+  background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px;
+  font-size:14px;color:#9AA29B;
+}
+.b-tools{display:flex;gap:10px;margin-top:10px;}
+.b-tool{
+  flex:1;border:1px solid #E2E4DD;border-radius:12px;background:#fff;
+  padding:11px 12px;display:flex;align-items:center;gap:9px;
+  font-size:13px;font-weight:500;color:#2B332D;
+}
+.b-tool svg{flex:0 0 auto;}
+
+.b-label{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin:26px 0 10px;
+}
+.b-label h3{margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7C857F;font-weight:600;}
+.b-label span{font-size:11.5px;color:#9AA29B;}
+
+.b-quiz{
+  border:1px solid #DDE3DE;border-radius:16px;background:#fff;padding:15px 16px;
+  position:relative;overflow:hidden;
+}
+.b-quiz::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#1F5C45;}
+.b-quiz h4{margin:0;font-family:"Newsreader",serif;font-size:19px;font-weight:400;color:#141A16;}
+.b-quiz p{margin:5px 0 0;font-size:12.5px;color:#7C857F;line-height:1.5;}
+.b-dots{display:flex;gap:5px;margin-top:12px;align-items:center;}
+.b-dot{width:9px;height:9px;border-radius:50%;background:#E1E5E0;}
+.b-dot.weak{background:#C97B4E;}
+.b-dot.ok{background:#1F5C45;}
+.b-dots span{margin-left:6px;font-size:11px;color:#9AA29B;}
+.b-btn{
+  margin-top:14px;background:#1F5C45;color:#fff;border-radius:10px;
+  padding:11px 0;text-align:center;font-size:13.5px;font-weight:500;letter-spacing:.01em;
+}
+
+.b-list{display:flex;flex-direction:column;}
+.b-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EDEEE9;}
+.b-row:last-child{border-bottom:0;}
+.b-thumb{
+  width:38px;height:38px;border-radius:9px;display:grid;place-items:center;
+  font-family:"Newsreader",serif;font-size:17px;color:#3F4C44;flex:0 0 auto;
+}
+.b-row-txt{flex:1;min-width:0;}
+.b-row-txt b{display:block;font-size:14.5px;font-weight:500;letter-spacing:-.005em;}
+.b-row-txt span{font-size:12px;color:#8A928B;}
+.b-meter{display:flex;gap:3px;}
+.b-meter i{width:14px;height:3px;border-radius:2px;background:#E4E6E1;display:block;}
+.b-meter i.f{background:#1F5C45;}
+
+.b-nav{
+  margin:auto 0 0;display:flex;justify-content:space-around;
+  border-top:1px solid #E6E7E1;background:#FCFCFA;padding:11px 0 24px;
+}
+.b-nav div{font-size:11.5px;color:#9AA29B;letter-spacing:.02em;}
+.b-nav div.on{color:#1F5C45;font-weight:600;}
+
+.foot{
+  margin-top:44px;padding-top:22px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:14px;max-width:62ch;
+}
+.foot b{color:var(--ink);font-weight:600;}
+</style>
+
+<div class="wrap">
+  <div class="brief">
+    <div class="eyebrow">Word Garden · 首页风格小样</div>
+    <h1>两种方向，同一个首页</h1>
+    <p>内容完全一样（收词三入口、今日测验、最近收集），只有气质不同。选一个，或者告诉我哪几处要互换。文字与数据都是占位示例，孩子的名字先写作「朵朵」。</p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="compare">
+
+    <!-- ===================== A ===================== -->
+    <div class="col col-a">
+      <div class="col-head">
+        <div class="tag"><b>A</b> 方向一</div>
+        <h2>云朵贴纸</h2>
+        <p>CapWords 那一路，但把糖度降下来。</p>
+      </div>
+
+      <div class="phone">
+        <div class="screen a">
+          <div class="a-cloud a-c1"></div>
+          <div class="a-cloud a-c2"></div>
+
+          <div class="bar">
+            <span>9:41</span>
+            <span aria-hidden="true">
+              <svg width="52" height="12" viewBox="0 0 52 12" fill="none">
+                <rect x="0" y="7" width="3" height="5" rx="1" fill="#2C3A42"/>
+                <rect x="5" y="5" width="3" height="7" rx="1" fill="#2C3A42"/>
+                <rect x="10" y="3" width="3" height="9" rx="1" fill="#2C3A42"/>
+                <rect x="15" y="1" width="3" height="11" rx="1" fill="#2C3A42" opacity=".35"/>
+                <path d="M23 4.5a7 7 0 0 1 9 0" stroke="#2C3A42" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M25.5 7.2a3.6 3.6 0 0 1 4 0" stroke="#2C3A42" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="27.5" cy="9.8" r="1.1" fill="#2C3A42"/>
+                <rect x="38" y="2" width="12" height="8" rx="2.2" stroke="#2C3A42" stroke-width="1.2" opacity=".5"/>
+                <rect x="39.5" y="3.5" width="8" height="5" rx="1.2" fill="#2C3A42"/>
+                <path d="M51 5v2" stroke="#2C3A42" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>
+              </svg>
+            </span>
+          </div>
+
+          <div class="a-body">
+            <div class="a-top">
+              <div>
+                <div class="a-hello">下午好呀，</div>
+                <div class="a-name">朵朵的<span>单词花园</span></div>
+              </div>
+              <div class="a-avatar">🌱</div>
+            </div>
+
+            <div class="a-garden">
+              <div class="a-stats">
+                <div class="a-pill a-p1"><b>47</b>已种下</div>
+                <div class="a-pill a-p2"><b>+3</b>今天新词</div>
+                <div class="a-pill a-p3"><b>5</b>天连续</div>
+              </div>
+              <svg class="a-hill" viewBox="0 0 360 78" fill="none" preserveAspectRatio="none">
+                <path d="M0 60c48-16 92 6 138-4s84-28 130-18 62 22 92 18v22H0z" fill="#E4F0E3"/>
+                <path d="M0 68c54-10 96 4 150-2s96-16 150-8 60 10 60 10v10H0z" fill="#CFE6CE"/>
+                <g stroke="#6E9B6C" stroke-width="2" stroke-linecap="round">
+                  <path d="M42 66v-16"/><path d="M96 66v-22"/><path d="M150 66v-13"/>
+                  <path d="M204 66v-20"/><path d="M258 66v-15"/><path d="M312 66v-24"/>
+                </g>
+                <g fill="#8CBF87">
+                  <ellipse cx="36" cy="50" rx="7" ry="4.6"/><ellipse cx="48" cy="52" rx="6" ry="4"/>
+                  <ellipse cx="90" cy="44" rx="7.5" ry="5"/><ellipse cx="102" cy="46" rx="6" ry="4"/>
+                  <ellipse cx="144" cy="53" rx="6.5" ry="4.4"/><ellipse cx="156" cy="55" rx="5.5" ry="3.8"/>
+                  <ellipse cx="198" cy="46" rx="7" ry="4.6"/><ellipse cx="210" cy="48" rx="6" ry="4"/>
+                  <ellipse cx="252" cy="51" rx="6.8" ry="4.4"/><ellipse cx="264" cy="53" rx="5.6" ry="3.8"/>
+                  <ellipse cx="306" cy="42" rx="7.4" ry="5"/><ellipse cx="318" cy="44" rx="6" ry="4"/>
+                </g>
+                <circle cx="204" cy="38" r="5.4" fill="#F0B07E"/>
+                <circle cx="204" cy="38" r="2" fill="#FFF3E4"/>
+                <circle cx="96" cy="35" r="4.6" fill="#C9A7DC"/>
+                <circle cx="96" cy="35" r="1.7" fill="#FFF3E4"/>
+              </svg>
+            </div>
+
+            <div class="a-sec">今天想收点什么</div>
+            <div class="a-actions">
+              <div class="a-act">
+                <div class="a-ico a-i1">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#4E88BE" stroke-width="1.9" stroke-linecap="round">
+                    <circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 17 17"/>
+                  </svg>
+                </div>
+                查一个词
+              </div>
+              <div class="a-act">
+                <div class="a-ico a-i2">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5C8659" stroke-width="1.9" stroke-linejoin="round">
+                    <path d="M2.5 6.5h3l1.5-2h6l1.5 2h3v9h-15z"/><circle cx="10" cy="11" r="3"/>
+                  </svg>
+                </div>
+                拍个东西
+              </div>
+              <div class="a-act">
+                <div class="a-ico a-i3">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#B9764A" stroke-width="1.9" stroke-linecap="round">
+                    <rect x="3.5" y="2.5" width="13" height="15" rx="2"/>
+                    <path d="M7 7h6M7 10h6M7 13h3.5"/>
+                  </svg>
+                </div>
+                拍单词表
+              </div>
+            </div>
+
+            <div class="a-quiz">
+              <div class="a-quiz-txt">
+                <h3>浇水时间到啦</h3>
+                <p>6 个词等你复习，其中 2 个有点渴 💧</p>
+              </div>
+              <div class="a-go">去浇水</div>
+            </div>
+
+            <div class="a-sec">刚种下的</div>
+            <div class="a-chips">
+              <div class="a-chip"><em>🦋</em>butterfly <i>蝴蝶</i></div>
+              <div class="a-chip"><em>🪜</em>ladder <i>梯子</i></div>
+              <div class="a-chip"><em>🐌</em>snail <i>蜗牛</i></div>
+              <div class="a-chip"><em>🌰</em>chestnut <i>栗子</i></div>
+            </div>
+
+            <div class="a-nav">
+              <div class="on">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <path d="M10 17V8"/><path d="M10 9C7 9 5 7 5 4c3 0 5 2 5 5z"/><path d="M10 12c3 0 5-2 5-5-3 0-5 2-5 5z"/>
+                </svg>花园
+              </div>
+              <div>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                  <path d="M3 4.5h5a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H3z"/><path d="M17 4.5h-5a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h5z"/>
+                </svg>词本
+              </div>
+              <div>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                  <path d="m10 3 2.2 4.5 5 .7-3.6 3.5.9 4.9L10 14.3l-4.5 2.3.9-4.9L2.8 8.2l5-.7z"/>
+                </svg>测验
+              </div>
+              <div>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="10" cy="7.5" r="3.2"/><path d="M4 16.5c1-2.8 3.2-4.2 6-4.2s5 1.4 6 4.2"/>
+                </svg>我的
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes">
+        <li>浅雾蓝到暖米的天空底色，白色贴纸卡 + 实心投影，像贴在纸上；饱和度压低，避开塑料玩具感。</li>
+        <li>首页顶部是一块"花园"：收几个词就长几棵苗，数字变成看得见的成长。</li>
+        <li>标题用圆体 Baloo 2，正文 Nunito；复习被说成"浇水"，测验不像作业。</li>
+      </ul>
+    </div>
+
+    <!-- ===================== B ===================== -->
+    <div class="col col-b">
+      <div class="col-head">
+        <div class="tag"><b>B</b> 方向二</div>
+        <h2>纸感留白</h2>
+        <p>ChatGPT 那一路，靠字体和留白显气质。</p>
+      </div>
+
+      <div class="phone">
+        <div class="screen b">
+          <div class="bar">
+            <span>9:41</span>
+            <span aria-hidden="true">
+              <svg width="52" height="12" viewBox="0 0 52 12" fill="none">
+                <rect x="0" y="7" width="3" height="5" rx="1" fill="#171C19"/>
+                <rect x="5" y="5" width="3" height="7" rx="1" fill="#171C19"/>
+                <rect x="10" y="3" width="3" height="9" rx="1" fill="#171C19"/>
+                <rect x="15" y="1" width="3" height="11" rx="1" fill="#171C19" opacity=".3"/>
+                <path d="M23 4.5a7 7 0 0 1 9 0" stroke="#171C19" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M25.5 7.2a3.6 3.6 0 0 1 4 0" stroke="#171C19" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="27.5" cy="9.8" r="1.1" fill="#171C19"/>
+                <rect x="38" y="2" width="12" height="8" rx="2.2" stroke="#171C19" stroke-width="1.2" opacity=".45"/>
+                <rect x="39.5" y="3.5" width="8" height="5" rx="1.2" fill="#171C19"/>
+                <path d="M51 5v2" stroke="#171C19" stroke-width="1.4" stroke-linecap="round" opacity=".45"/>
+              </svg>
+            </span>
+          </div>
+
+          <div class="b-body">
+            <div class="b-top">
+              <div class="b-mark">Word Garden</div>
+              <div class="b-user">朵</div>
+            </div>
+
+            <h1 class="b-lede">今天，花园里<br>长出了 <em>3 个</em> 新词。</h1>
+            <p class="b-sub">8 月 28 日 · 星期五</p>
+
+            <div class="b-metrics">
+              <div class="b-metric"><b>47</b><span>收集总数</span></div>
+              <div class="b-metric"><b>31</b><span>已经记牢</span></div>
+              <div class="b-metric"><b>5</b><span>连续天数</span></div>
+            </div>
+
+            <div class="b-search">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#9AA29B" stroke-width="1.7" stroke-linecap="round">
+                <circle cx="9" cy="9" r="6"/><path d="M13.5 13.5 17 17"/>
+              </svg>
+              想知道什么东西的英文？
+            </div>
+
+            <div class="b-tools">
+              <div class="b-tool">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#1F5C45" stroke-width="1.6" stroke-linejoin="round">
+                  <path d="M2.5 6.5h3l1.5-2h6l1.5 2h3v9h-15z"/><circle cx="10" cy="11" r="3"/>
+                </svg>
+                拍实物
+              </div>
+              <div class="b-tool">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#1F5C45" stroke-width="1.6" stroke-linecap="round">
+                  <rect x="3.5" y="2.5" width="13" height="15" rx="2"/><path d="M7 7h6M7 10h6M7 13h3.5"/>
+                </svg>
+                拍词表
+              </div>
+            </div>
+
+            <div class="b-label"><h3>今日复习</h3><span>约 4 分钟</span></div>
+            <div class="b-quiz">
+              <h4>6 个词等着你</h4>
+              <p>其中 2 个上次答错了，这次会多出现几遍。</p>
+              <div class="b-dots">
+                <span class="b-dot ok"></span><span class="b-dot ok"></span><span class="b-dot ok"></span>
+                <span class="b-dot ok"></span><span class="b-dot weak"></span><span class="b-dot weak"></span>
+                <span>4 复习 · 2 加强</span>
+              </div>
+              <div class="b-btn">开始</div>
+            </div>
+
+            <div class="b-label"><h3>最近收集</h3><span>查看全部</span></div>
+            <div class="b-list">
+              <div class="b-row">
+                <div class="b-thumb" style="background:#E8EFE9;">b</div>
+                <div class="b-row-txt"><b>butterfly</b><span>蝴蝶 · 拍照收集</span></div>
+                <div class="b-meter"><i class="f"></i><i class="f"></i><i></i></div>
+              </div>
+              <div class="b-row">
+                <div class="b-thumb" style="background:#F0EBE3;">l</div>
+                <div class="b-row-txt"><b>ladder</b><span>梯子 · 拍照收集</span></div>
+                <div class="b-meter"><i class="f"></i><i></i><i></i></div>
+              </div>
+              <div class="b-row">
+                <div class="b-thumb" style="background:#EAEDF1;">s</div>
+                <div class="b-row-txt"><b>snail</b><span>蜗牛 · 查词收集</span></div>
+                <div class="b-meter"><i class="f"></i><i class="f"></i><i class="f"></i></div>
+              </div>
+            </div>
+
+            <div class="b-nav">
+              <div class="on">花园</div><div>单词本</div><div>测验</div><div>我的</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes">
+        <li>近白纸底 + 一根深松绿做唯一重点色，卡片只用细线不用阴影，信息靠留白和层级分。</li>
+        <li>标题用 Newsreader 衬线体写成一句人话（"今天长出了 3 个新词"），正文 IBM Plex Sans，耐看不幼稚，孩子长大也不会觉得低龄。</li>
+        <li>掌握度用三格小刻度表示，测验卡直接标出"2 个要加强"，自适应逻辑是看得见的。</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot">
+    回我一句就行：<b>A</b>、<b>B</b>，或者 <b>A+B</b>（比如"要 B 的排版和字体，但保留 A 的花园插画和'浇水'说法"）。定下来我再铺开做剩下的页面。
+  </p>
+</div>
