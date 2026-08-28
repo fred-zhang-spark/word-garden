@@ -1,0 +1,12 @@
+{
+  "name": "单词花园",
+  "short_name": "单词花园",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#DCEAF6",
+  "theme_color": "#DCEAF6",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

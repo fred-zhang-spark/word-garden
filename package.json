@@ -1,0 +1,14 @@
+{
+  "name": "word-garden",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "单词花园 —— 给孩子的活的英语单词本",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.0",
+    "zod": "^4.4.3"
+  }
+}
